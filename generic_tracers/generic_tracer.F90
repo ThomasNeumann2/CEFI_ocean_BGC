@@ -539,8 +539,9 @@ contains
     real, dimension(ilb:,jlb:),optional,  intent(in) :: geolat 
     real, dimension(ilb:,jlb:,:  ),optional ,intent(in) :: diff_cbt !
 #else
-    real, dimension(ilb:,jlb:),           intent(in) :: geolat
-    type(EOS_type),                       intent(in) :: eqn_of_state
+! made geolat, eqn_of_state optional
+    real, dimension(ilb:,jlb:), optional,    intent(in) :: geolat
+    type(EOS_type),             optional,    intent(in) :: eqn_of_state
 #endif
 
 
