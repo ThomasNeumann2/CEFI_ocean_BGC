@@ -77,10 +77,12 @@ module generic_tracer
   use generic_SF6,    only : generic_SF6_register_diag
   use generic_SF6, only : as_param_sf6
 
-!  use generic_ERGOM, only : generic_ERGOM_register, generic_ERGOM_register_diag
-!  use generic_ERGOM, only : generic_ERGOM_init, generic_ERGOM_update_from_source,generic_ERGOM_update_from_coupler
-!  use generic_ERGOM, only : generic_ERGOM_set_boundary_values, generic_ERGOM_end, do_generic_ERGOM
-!  use generic_ERGOM, only : generic_ERGOM_update_from_bottom
+#ifdef IOW
+  use generic_ERGOM, only : generic_ERGOM_register, generic_ERGOM_register_diag
+  use generic_ERGOM, only : generic_ERGOM_init, generic_ERGOM_update_from_source,generic_ERGOM_update_from_coupler
+  use generic_ERGOM, only : generic_ERGOM_set_boundary_values, generic_ERGOM_end, do_generic_ERGOM
+  use generic_ERGOM, only : generic_ERGOM_update_from_bottom
+#endif
 
 !  use generic_TOPAZ,  only : generic_TOPAZ_register
 !  use generic_TOPAZ,  only : generic_TOPAZ_init, generic_TOPAZ_update_from_source,generic_TOPAZ_register_diag
@@ -106,6 +108,10 @@ module generic_tracer
   use generic_COBALT,  only : as_param_cobalt
 
   use MOM_EOS,         only: EOS_type
+#ifdef IOW
+  use MOM_error_handler, only : MOM_error, FATAL, WARNING, callTree_enter, callTree_leave
+  use MOM_domains, only : MOM_domain_type
+#endif
 
   implicit none ; private
 
@@ -141,9 +147,15 @@ module generic_tracer
   logical :: force_update_fluxes = .false.
   character(len=10) :: as_param   = 'W14'     ! Use Wanninkhoff 2014 parameters for air-sea gas transfer by default
 
+#ifdef IOW
+  namelist /generic_tracer_nml/ do_generic_tracer, do_generic_abiotic, do_generic_age, do_generic_argon, do_generic_CFC, &
+     do_generic_SF6, do_generic_BLING, do_generic_COBALT, do_generic_ERGOM, &
+     force_update_fluxes, do_generic_blres, as_param, do_vertfill_post
+#else
   namelist /generic_tracer_nml/ do_generic_tracer, do_generic_abiotic, do_generic_age, do_generic_argon, do_generic_CFC, &
       do_generic_SF6, do_generic_BLING, do_generic_COBALT, &
       force_update_fluxes, do_generic_blres, as_param, do_vertfill_post
+#endif
 
 contains
 
@@ -200,8 +212,10 @@ contains
 !    if(do_generic_TOPAZ) &
 !         call generic_TOPAZ_register(tracer_list)
 
-!    if(do_generic_ERGOM) &
-!         call generic_ERGOM_register(tracer_list)
+#ifdef IOW
+    if(do_generic_ERGOM) &
+         call generic_ERGOM_register(tracer_list)
+#endif
 
     if(do_generic_BLING) &
          call generic_BLING_register(tracer_list)
@@ -297,8 +311,10 @@ contains
 !    if(do_generic_TOPAZ) &
 !         call generic_TOPAZ_init(tracer_list)
 
-!    if(do_generic_ERGOM) &
-!         call generic_ERGOM_init(tracer_list)
+#ifdef IOW
+    if(do_generic_ERGOM) &
+         call generic_ERGOM_init(tracer_list)
+#endif
 
     if(do_generic_BLING) &
          call generic_BLING_init(tracer_list, force_update_fluxes)
@@ -339,7 +355,9 @@ contains
     
 !    if(do_generic_TOPAZ)  call generic_TOPAZ_register_diag(diag_list)    
 
-!    if(do_generic_ERGOM)  call generic_ERGOM_register_diag(diag_list)    
+#ifdef IOW
+    if(do_generic_ERGOM)  call generic_ERGOM_register_diag(diag_list)    
+#endif
 
     if(do_generic_BLING)  call generic_BLING_register_diag(diag_list)    
     
@@ -455,10 +473,21 @@ contains
   !  </IN>
   ! </SUBROUTINE>
 
+#ifndef IOW
   subroutine generic_tracer_source(Temp,Salt,rho_dzt,dzt,hblt_depth,ilb,jlb,tau,dtts,&
        grid_dat,model_time,nbands,max_wavelength_band,sw_pen_band,opacity_band,internal_heat,&
        frunoff,grid_ht, current_wave_stress, sosga, geolat, photo_acc_dpth)
+#else
+!TN
+  subroutine generic_tracer_source(Temp,Salt,rho_dzt,dzt,xt,yt,hblt_depth,ilb,jlb,tau,dtts,&
+       grid_dat,model_time,nbands,max_wavelength_band,sw_pen_band,opacity_band,internal_heat,&
+       frunoff,grid_ht, current_wave_stress, sosga, geolat, diff_cbt, D)
+#endif
     real, dimension(ilb:,jlb:,:),   intent(in) :: Temp,Salt,rho_dzt,dzt
+#ifdef IOW 
+! TN
+    real, dimension(ilb:,jlb:),   intent(in) :: xt,yt
+#endif
     real, dimension(ilb:,jlb:),     intent(in) :: hblt_depth
     integer,                        intent(in) :: ilb,jlb,tau
     real,                           intent(in) :: dtts
@@ -473,8 +502,14 @@ contains
     real, dimension(ilb:,jlb:),optional,  intent(in) :: grid_ht
     real, dimension(ilb:,jlb:),optional , intent(in) :: current_wave_stress
     real,                      optional , intent(in) :: sosga ! global avg. sea surface salinity
+#ifdef IOW
+    real, dimension(ilb:,jlb:),optional,  intent(in) :: geolat
+    real, dimension(ilb:,jlb:,:  ),optional ,intent(in) :: diff_cbt !
+    type(MOM_domain_type),     optional,  intent(inout) :: D
+#else
     real, dimension(ilb:,jlb:),  intent(in) :: geolat 
     real, dimension(ilb:,jlb:), optional, intent(in) :: photo_acc_dpth
+#endif
 
     character(len=fm_string_len), parameter :: sub_name = 'generic_tracer_update_from_source'
 
@@ -490,10 +525,16 @@ contains
 !    if(do_generic_TOPAZ)  call generic_TOPAZ_update_from_source(tracer_list,Temp,Salt,rho_dzt,dzt,&
 !         hblt_depth,ilb,jlb,tau,dtts,grid_dat,model_time,&
 !         nbands,max_wavelength_band,sw_pen_band,opacity_band)
-
+#ifndef IOW
 !    if(do_generic_ERGOM)  call generic_ERGOM_update_from_source(tracer_list,Temp,Salt,rho_dzt,dzt,&
 !         hblt_depth,ilb,jlb,tau,dtts,grid_dat,model_time,&
 !         nbands,max_wavelength_band,sw_pen_band,opacity_band,current_wave_stress)
+#else
+    if(do_generic_ERGOM)  call generic_ERGOM_update_from_source(tracer_list,Temp,Salt,rho_dzt,dzt,&
+         xt,yt,hblt_depth,ilb,jlb,tau,dtts,grid_dat,model_time,&
+         nbands,max_wavelength_band,sw_pen_band,opacity_band, &
+         current_wave_stress=current_wave_stress,diff_cbt=diff_cbt,D=D)
+#endif
 
     if(do_generic_BLING)  call generic_BLING_update_from_source(tracer_list,Temp,Salt,rho_dzt,dzt,&
          hblt_depth,ilb,jlb,tau,dtts,grid_dat,model_time,&
@@ -503,11 +544,16 @@ contains
 !         hblt_depth,ilb,jlb,tau,dtts,grid_dat,model_time,&
 !         nbands,max_wavelength_band,sw_pen_band,opacity_band, grid_ht)
 
+#ifdef IOW
+     if (do_generic_COBALT) &
+          call MOM_error(FATAL, trim(sub_name)// ": No COBALT in IOW mode at this development state.")
+#else
     if (do_generic_COBALT) & 
           call generic_COBALT_update_from_source(tracer_list,Temp,Salt,rho_dzt,dzt,&
             hblt_depth,ilb,jlb,tau,dtts,grid_dat,model_time,&
             nbands,max_wavelength_band,sw_pen_band,opacity_band,internal_heat,frunoff,&
             geolat,photo_acc_dpth)
+#endif
 
     if(do_generic_SF6)  call generic_SF6_update_from_source(tracer_list,rho_dzt,dzt,hblt_depth,&
          ilb,jlb,tau,dtts,grid_dat,model_time)
@@ -558,7 +604,9 @@ contains
 
 !    if(do_generic_TOPAZ)  call generic_TOPAZ_update_from_bottom(tracer_list,dt, tau, model_time)
 
-!    if(do_generic_ERGOM)  call generic_ERGOM_update_from_bottom(tracer_list,dt, tau, model_time)
+#ifdef IOW
+     if(do_generic_ERGOM)  call generic_ERGOM_update_from_bottom(tracer_list,dt, tau, model_time)
+#endif
    
     if(do_generic_BLING)  call generic_BLING_update_from_bottom(tracer_list,dt, tau)
 
@@ -685,8 +733,10 @@ contains
 !    if(do_generic_TOPAZ) &
 !         call generic_TOPAZ_set_boundary_values(tracer_list,ST,SS,rho,ilb,jlb,tau)
 
-!    if(do_generic_ERGOM) &
-!         call generic_ERGOM_set_boundary_values(tracer_list,ST,SS,rho,ilb,jlb,tau)
+#ifdef IOW
+    if(do_generic_ERGOM) &
+         call generic_ERGOM_set_boundary_values(tracer_list,ST,SS,rho,ilb,jlb,tau)
+#endif
 
     if(do_generic_BLING) &
          call generic_BLING_set_boundary_values(tracer_list,ST,SS,rho,ilb,jlb,tau,dzt)
@@ -744,7 +794,9 @@ contains
     if(do_generic_CFC) call generic_CFC_end
     if(do_generic_SF6) call generic_SF6_end
 !    if(do_generic_TOPAZ)  call generic_TOPAZ_end
-!    if(do_generic_ERGOM)  call generic_ERGOM_end
+#ifdef IOW
+    if(do_generic_ERGOM)  call generic_ERGOM_end
+#endif
     if(do_generic_BLING)  call generic_BLING_end
 !    if(do_generic_miniBLING)  call generic_miniBLING_end
     if(do_generic_COBALT)  call generic_COBALT_end
