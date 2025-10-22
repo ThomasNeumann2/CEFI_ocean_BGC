@@ -2,7 +2,7 @@
 ! www.ergom.net
 ! Host model: MOM6
 !
-! Model Version: CDOM 1.4 version 1.3b with eelgrass, code generation date: 2025-Feb-18 13:30 
+! Model Version: CDOM 1.4 version 1.3b with eelgrass, code generation date: 2025-Okt-22 16:52 
 !----------------------------------------------------------------
 ! <CONTACT EMAIL="thomas.neumann@io-warnemuende.de, hagen.radtke@io-warnemuende.de"> Thomas Neumann, Hagen Radtke, Martin Schmidt 
 ! </CONTACT>
@@ -85,9 +85,7 @@ module generic_ERGOM
   use g_tracer_utils, only : g_send_data
   use g_tracer_utils, only : g_tracer_is_prog, g_tracer_vertfill, g_tracer_get_next
 
-#ifdef hor_spread
   use MOM_domains, only : MOM_domain_type, pass_var
-#endif
 
 !  use data_override_mod, only: data_override
 
@@ -97,7 +95,7 @@ module generic_ERGOM
   character(len=fm_string_len), parameter :: package_name   = 'generic_ergom'
 
   character(len=128) :: version=&
-         '$Id: generic_ERGOM.F90,v CDOM 1.4 version 1.3b with eelgrass 2025-Feb-18 13:30 Baltic Sea Exp $'
+         '$Id: generic_ERGOM.F90,v CDOM 1.4 version 1.3b with eelgrass 2025-Okt-22 16:52 Baltic Sea Exp $'
   character (len=128) :: tagname = &
          '$Name: IOW $'
 
@@ -318,9 +316,9 @@ module generic_ERGOM
      real, ALLOCATABLE, dimension(:,:) :: &
           lr_egs_max                               ! dynamic shoot biomass maximum as funktion of root
      real, ALLOCATABLE, dimension(:,:) :: &
-          lim_egs_growth                           ! limitation of eelgrass shoots growth due to carring capacity and root density
+          lim_egs_growth                           ! limitation of eelgrass shoots growth due to carrying capacity and root density
      real, ALLOCATABLE, dimension(:,:) :: &
-          lim_egr_growth                           ! limitation of eelgrass root growth due to carring capacity
+          lim_egr_growth                           ! limitation of eelgrass root growth due to carrying capacity
      real, ALLOCATABLE, dimension(:,:) :: &
           lat_spread_egr                           ! lateral growth of eelgrass roots
      real, ALLOCATABLE, dimension(:,:) :: &
@@ -329,6 +327,8 @@ module generic_ERGOM
           lr_assim_egs                             ! growth rate of eelgrass shoots, limited by DIN, DIP, light and oxygen [1/day]
      real, ALLOCATABLE, dimension(:,:) :: &
           egs_mort_det_tau                          ! additional eelgrass mortality under hight bootom stress
+     real, ALLOCATABLE, dimension(:,:) :: &
+          egr_mort_det_tau                          ! additional eelgrass roots mortality under hight bootom stress
      real, ALLOCATABLE, dimension(:,:) :: &
           ph_temp                                  ! temporary value assumed for pH [1]
      real, ALLOCATABLE, dimension(:,:) :: &
@@ -1046,12 +1046,13 @@ module generic_ERGOM
           id_alk_btf_sw_BS   , &                  ! diag id for Alk bottom flux in Bothnian Sea
           id_alk_btf_sw_BB   , &                  ! diag id for Alk bottom flux in Bothnian Bay
           id_lr_egs_max      , &                  ! diag id for dynamic shoot biomass maximum as funktion of root
-          id_lim_egs_growth  , &                  ! diag id for limitation of eelgrass shoots growth due to carring capacity and root density
-          id_lim_egr_growth  , &                  ! diag id for limitation of eelgrass root growth due to carring capacity
+          id_lim_egs_growth  , &                  ! diag id for limitation of eelgrass shoots growth due to carrying capacity and root density
+          id_lim_egr_growth  , &                  ! diag id for limitation of eelgrass root growth due to carrying capacity
           id_lat_spread_egr  , &                  ! diag id for lateral growth of eelgrass roots
           id_lim_light_egs   , &                  ! diag id for light limitation factor for eelgrass growth [1]
           id_lr_assim_egs    , &                  ! diag id for growth rate of eelgrass shoots, limited by DIN, DIP, light and oxygen [1/day]
           id_egs_mort_det_tau , &                  ! diag id for additional eelgrass mortality under hight bootom stress
+          id_egr_mort_det_tau , &                  ! diag id for additional eelgrass roots mortality under hight bootom stress
           id_dep_wet_t_nh4               = -1,  & ! ammonium atmospheric deposition
           id_dep_wet_t_no3               = -1,  & ! nitrate atmospheric deposition
           id_dep_wet_t_po4               = -1,  & ! phosphate atmospheric deposition
@@ -1402,6 +1403,9 @@ module generic_ERGOM
 
      real, ALLOCATABLE, dimension(:,:,:) :: &
           sed_egs_mort_det_tau            ! array to be allocated if sedimentary values are written to output
+
+     real, ALLOCATABLE, dimension(:,:,:) :: &
+          sed_egr_mort_det_tau            ! array to be allocated if sedimentary values are written to output
      real, ALLOCATABLE, dimension(:,:,:) :: &
           moldiff_t_sed                  ! molecular diffusivity [m2/s]
      real, ALLOCATABLE, dimension(:,:,:) :: &
@@ -1527,12 +1531,13 @@ module generic_ERGOM
      integer :: id_sed_alk_btf_sw_BS     ! diag id for sediment values of Alk bottom flux in Bothnian Sea
      integer :: id_sed_alk_btf_sw_BB     ! diag id for sediment values of Alk bottom flux in Bothnian Bay
      integer :: id_sed_lr_egs_max        ! diag id for sediment values of dynamic shoot biomass maximum as funktion of root
-     integer :: id_sed_lim_egs_growth    ! diag id for sediment values of limitation of eelgrass shoots growth due to carring capacity and root density
-     integer :: id_sed_lim_egr_growth    ! diag id for sediment values of limitation of eelgrass root growth due to carring capacity
+     integer :: id_sed_lim_egs_growth    ! diag id for sediment values of limitation of eelgrass shoots growth due to carrying capacity and root density
+     integer :: id_sed_lim_egr_growth    ! diag id for sediment values of limitation of eelgrass root growth due to carrying capacity
      integer :: id_sed_lat_spread_egr    ! diag id for sediment values of lateral growth of eelgrass roots
      integer :: id_sed_lim_light_egs     ! diag id for sediment values of light limitation factor for eelgrass growth [1]
      integer :: id_sed_lr_assim_egs      ! diag id for sediment values of growth rate of eelgrass shoots, limited by DIN, DIP, light and oxygen [1/day]
      integer :: id_sed_egs_mort_det_tau   ! diag id for sediment values of additional eelgrass mortality under hight bootom stress
+     integer :: id_sed_egr_mort_det_tau   ! diag id for sediment values of additional eelgrass roots mortality under hight bootom stress
      integer :: id_sed_p_sed_burial      ! diag id for sediment values of burial of detritus deeper than max_sed
      integer :: id_sed_p_ips_burial      ! diag id for sediment values of burial of iron PO4
      integer :: id_sed_p_poc_burial      ! diag id for sediment values of burial of poc deeper than max_sed
@@ -1704,7 +1709,10 @@ module generic_ERGOM
   real :: egs0            = 0.00001  ! seed concentration for eelgrass [mol/m**2]
   real :: st_egs          = 20.0     ! steepness of eelgrass switches
   real :: egs_tau_max     = 0.15     ! maximum bottom stress before eelgrass is damaged [Pa/m**2]
-  real :: r_egs_mort_enh_tau = 20.0     ! eelgrass mortality enhancment factor in case bottom stress exceeds limit egs_tau_max
+  real :: egr_tau_max     = 1.0      ! maximum bottom stress before eelgrass roots are damaged [Pa/m**2]
+  real :: r_egs_mort_enh_tau = 20.0     ! mortality increase of eelgrass shoots under hight bottom stress
+  real :: r_egr_mort_enh_tau = 20.0     ! mortality increase of eelgrass roots under hight bottom stress
+  real :: sali_min_egs    = 4.0      ! Minimum salinity allowing eelgrass growth [g/kg]
 
   type(generic_ERGOM_type), save   :: ergom
   type(tracer_2d),            ALLOCATABLE, dimension(:), save :: tracers_2d
@@ -1885,7 +1893,10 @@ module generic_ERGOM
    egs0                  , & ! seed concentration for eelgrass [mol/m**2]
    st_egs                , & ! steepness of eelgrass switches
    egs_tau_max           , & ! maximum bottom stress before eelgrass is damaged [Pa/m**2]
-   r_egs_mort_enh_tau       , & ! eelgrass mortality enhancment factor in case bottom stress exceeds limit egs_tau_max
+   egr_tau_max           , & ! maximum bottom stress before eelgrass roots are damaged [Pa/m**2]
+   r_egs_mort_enh_tau       , & ! mortality increase of eelgrass shoots under hight bottom stress
+   r_egr_mort_enh_tau       , & ! mortality increase of eelgrass roots under hight bottom stress
+   sali_min_egs          , & ! Minimum salinity allowing eelgrass growth [g/kg]
    NUM_SEDIMENT_LAYERS , & ! Default value is 1 which means one fluffy layer only.
                            ! Setting it to a value larger than 1 means a sediment model will be used.
    NUM_VMOVE_STEPS     , &
@@ -2269,8 +2280,14 @@ contains
     write (stdout(),'(a)')         '        = steepness of eelgrass switches'
     write (stdout(),'((a), e13.6)')'    egs_tau_max    		        : ', egs_tau_max    
     write (stdout(),'(a)')         '        = maximum bottom stress before eelgrass is damaged [Pa/m**2]'
+    write (stdout(),'((a), e13.6)')'    egr_tau_max    		        : ', egr_tau_max    
+    write (stdout(),'(a)')         '        = maximum bottom stress before eelgrass roots are damaged [Pa/m**2]'
     write (stdout(),'((a), e13.6)')'    r_egs_mort_enh_tau		        : ', r_egs_mort_enh_tau
-    write (stdout(),'(a)')         '        = eelgrass mortality enhancment factor in case bottom stress exceeds limit egs_tau_max'
+    write (stdout(),'(a)')         '        = mortality increase of eelgrass shoots under hight bottom stress'
+    write (stdout(),'((a), e13.6)')'    r_egr_mort_enh_tau		        : ', r_egr_mort_enh_tau
+    write (stdout(),'(a)')         '        = mortality increase of eelgrass roots under hight bottom stress'
+    write (stdout(),'((a), e13.6)')'    sali_min_egs   		        : ', sali_min_egs   
+    write (stdout(),'(a)')         '        = Minimum salinity allowing eelgrass growth [g/kg]'
     write (stdout(),'(/)')
     write (stdout(),*) 'TRACERS (3d, no vertical movement):'
     write (stdout(),'(a)')         '    t_n2           '
@@ -4277,14 +4294,14 @@ write (stdout(),*) 'TRACERS (pseudo-3d (fish)):'
       allocate(ergom%lr_egs_max     (isd:ied,jsd:jed))
       ergom%lr_egs_max      = 0.0
     endif
-    vardesc_temp = vardesc("lim_egs_growth ","limitation of eelgrass shoots growth due to carring capacity and root density",'h','1','s','1','f')
+    vardesc_temp = vardesc("lim_egs_growth ","limitation of eelgrass shoots growth due to carrying capacity and root density",'h','1','s','1','f')
     ergom%id_lim_egs_growth  = register_diag_field(package_name, vardesc_temp%name, axes(1:2),&
          init_time, vardesc_temp%longname,vardesc_temp%units, missing_value = missing_value1)
     if (ergom%id_lim_egs_growth  .gt. 0) then
       allocate(ergom%lim_egs_growth (isd:ied,jsd:jed))
       ergom%lim_egs_growth  = 0.0
     endif
-    vardesc_temp = vardesc("lim_egr_growth ","limitation of eelgrass root growth due to carring capacity",'h','1','s','1','f')
+    vardesc_temp = vardesc("lim_egr_growth ","limitation of eelgrass root growth due to carrying capacity",'h','1','s','1','f')
     ergom%id_lim_egr_growth  = register_diag_field(package_name, vardesc_temp%name, axes(1:2),&
          init_time, vardesc_temp%longname,vardesc_temp%units, missing_value = missing_value1)
     if (ergom%id_lim_egr_growth  .gt. 0) then
@@ -4318,6 +4335,13 @@ write (stdout(),*) 'TRACERS (pseudo-3d (fish)):'
     if (ergom%id_egs_mort_det_tau .gt. 0) then
       allocate(ergom%egs_mort_det_tau(isd:ied,jsd:jed))
       ergom%egs_mort_det_tau = 0.0
+    endif
+    vardesc_temp = vardesc("egr_mort_det_tau","additional eelgrass roots mortality under hight bootom stress",'h','1','s','1','f')
+    ergom%id_egr_mort_det_tau = register_diag_field(package_name, vardesc_temp%name, axes(1:2),&
+         init_time, vardesc_temp%longname,vardesc_temp%units, missing_value = missing_value1)
+    if (ergom%id_egr_mort_det_tau .gt. 0) then
+      allocate(ergom%egr_mort_det_tau(isd:ied,jsd:jed))
+      ergom%egr_mort_det_tau = 0.0
     endif
 
     if (NUM_SEDIMENT_LAYERS .gt. 1) then
@@ -4973,14 +4997,14 @@ write (stdout(),*) 'TRACERS (pseudo-3d (fish)):'
          allocate(ergom%sed_lr_egs_max     (isd:ied,jsd:jed,nk))
          ergom%sed_lr_egs_max      = 0.0
        endif
-       vardesc_temp = vardesc("sed_lim_egs_growth ","limitation of eelgrass shoots growth due to carring capacity and root density",'h','1','s','1','f')
+       vardesc_temp = vardesc("sed_lim_egs_growth ","limitation of eelgrass shoots growth due to carrying capacity and root density",'h','1','s','1','f')
        ergom%id_sed_lim_egs_growth  = register_diag_field(package_name, vardesc_temp%name, axes(1:3),&
             init_time, vardesc_temp%longname,vardesc_temp%units, missing_value = missing_value1)
        if (ergom%id_sed_lim_egs_growth  .gt. 0) then
          allocate(ergom%sed_lim_egs_growth (isd:ied,jsd:jed,nk))
          ergom%sed_lim_egs_growth  = 0.0
        endif
-       vardesc_temp = vardesc("sed_lim_egr_growth ","limitation of eelgrass root growth due to carring capacity",'h','1','s','1','f')
+       vardesc_temp = vardesc("sed_lim_egr_growth ","limitation of eelgrass root growth due to carrying capacity",'h','1','s','1','f')
        ergom%id_sed_lim_egr_growth  = register_diag_field(package_name, vardesc_temp%name, axes(1:3),&
             init_time, vardesc_temp%longname,vardesc_temp%units, missing_value = missing_value1)
        if (ergom%id_sed_lim_egr_growth  .gt. 0) then
@@ -5014,6 +5038,13 @@ write (stdout(),*) 'TRACERS (pseudo-3d (fish)):'
        if (ergom%id_sed_egs_mort_det_tau .gt. 0) then
          allocate(ergom%sed_egs_mort_det_tau(isd:ied,jsd:jed,nk))
          ergom%sed_egs_mort_det_tau = 0.0
+       endif
+       vardesc_temp = vardesc("sed_egr_mort_det_tau","additional eelgrass roots mortality under hight bootom stress",'h','1','s','1','f')
+       ergom%id_sed_egr_mort_det_tau = register_diag_field(package_name, vardesc_temp%name, axes(1:3),&
+            init_time, vardesc_temp%longname,vardesc_temp%units, missing_value = missing_value1)
+       if (ergom%id_sed_egr_mort_det_tau .gt. 0) then
+         allocate(ergom%sed_egr_mort_det_tau(isd:ied,jsd:jed,nk))
+         ergom%sed_egr_mort_det_tau = 0.0
        endif
     endif
 
@@ -5902,7 +5933,6 @@ write (stdout(),*) 'TRACERS (pseudo-3d (fish)):'
     real :: cgt_temp                ! potential temperature     [Celsius]
     real :: cgt_sali                ! salinity                  [g/kg]
     real :: cgt_light               ! downward light flux (PAR) [W/m2]
-    real :: cgt_light_bot           ! cgt_light at k_bot        [W/m2]
     real :: cgt_cellheight          ! cell height               [m]
     real :: cgt_density             ! density                   [kg/m3]
     real :: cgt_bottomdepth         ! bottom depth              [m]
@@ -6099,12 +6129,13 @@ write (stdout(),*) 'TRACERS (pseudo-3d (fish)):'
     real                            :: alk_btf_sw_BS     ! Alk bottom flux in Bothnian Sea
     real                            :: alk_btf_sw_BB     ! Alk bottom flux in Bothnian Bay
     real                            :: lr_egs_max        ! dynamic shoot biomass maximum as funktion of root
-    real                            :: lim_egs_growth    ! limitation of eelgrass shoots growth due to carring capacity and root density
-    real                            :: lim_egr_growth    ! limitation of eelgrass root growth due to carring capacity
+    real                            :: lim_egs_growth    ! limitation of eelgrass shoots growth due to carrying capacity and root density
+    real                            :: lim_egr_growth    ! limitation of eelgrass root growth due to carrying capacity
     real                            :: lat_spread_egr    ! lateral growth of eelgrass roots
     real                            :: lim_light_egs     ! light limitation factor for eelgrass growth [1]
     real                            :: lr_assim_egs      ! growth rate of eelgrass shoots, limited by DIN, DIP, light and oxygen [1/day]
     real                            :: egs_mort_det_tau   ! additional eelgrass mortality under hight bootom stress
+    real                            :: egr_mort_det_tau   ! additional eelgrass roots mortality under hight bootom stress
 
     real                            :: p_no3_assim_lpp   ! assimilation of nitrate by large-cell phytoplankton
     real                            :: p_nh4_assim_lpp   ! assimilation of ammonium by large-cell phytoplankton
@@ -7104,7 +7135,6 @@ write (stdout(),*) 'TRACERS (pseudo-3d (fish)):'
                 t_sed_pocp      = max(t_sed_pocp     ,0.0)
                 t_eelgrass_root = max(t_eelgrass_root,0.0)
                 t_eelgrass_shoot = max(t_eelgrass_shoot,0.0)
-                cgt_light_bot    = ergom%irr_inst(i,j,k_bot(i,j))
 #ifdef hor_spread
                 ergom%t_eelgrass_root_tau(i,j) = t_eelgrass_root
 #endif
@@ -7347,8 +7377,6 @@ write (stdout(),*) 'TRACERS (pseudo-3d (fish)):'
 
                 ! switch (1=erosion, 0=no erosion) which depends on the combined bottom stress of currents and waves :
                 erosion_is_active = theta(cgt_current_wave_stress - critical_stress)
-!TN
-!            erosion_is_active = cgt_current_wave_stress
 
                 ! poc in active sediment layer [mol/m**2] :
                 poc_active      = sed_tot_active * t_sed_poc/sed_tot
@@ -7378,26 +7406,29 @@ write (stdout(),*) 'TRACERS (pseudo-3d (fish)):'
                 alk_btf_sw_BB   = (1 - alk_btf_l2) * (alk_btf_db1 + alk_btf_DBBfac*alk_btf_db2)
 
                 ! dynamic shoot biomass maximum as funktion of root :
-                lr_egs_max      = shoot_max * min(t_eelgrass_root/root_max, 1.0)
+                lr_egs_max      = shoot_max * max(min(t_eelgrass_root/root_max, 1.0),epsilon)
 
-                ! limitation of eelgrass shoots growth due to carring capacity and root density :
+                ! limitation of eelgrass shoots growth due to carrying capacity and root density :
                 lim_egs_growth  = 1/(1 + exp((t_eelgrass_shoot - lr_egs_max)*st_egs/lr_egs_max))
 
-                ! limitation of eelgrass root growth due to carring capacity :
+                ! limitation of eelgrass root growth due to carrying capacity :
                 lim_egr_growth  = 1/(1 + exp((t_eelgrass_root - root_max)*st_egs/root_max))
 
                 ! lateral growth of eelgrass roots :
                 lat_spread_egr  = 0.1*(1 - lim_egr_growth)      
 
                 ! light limitation factor for eelgrass growth [1] :
-                temp1 = max(cgt_light_bot/2.0,light_opt_egs)
-                lim_light_egs   = cgt_light_bot/temp1*exp(1-cgt_light_bot/temp1)
+                temp1 = max(cgt_light/2.0,light_opt_egs)
+                lim_light_egs   = cgt_light/temp1*exp(1-cgt_light/temp1)
 
                 ! growth rate of eelgrass shoots, limited by DIN, DIP, light and oxygen [1/day] :
-                lr_assim_egs    = r_egs_assim*theta(t_o2-2*t_h2s)*min(din_sq/(din_sq+din_min_egs*din_min_egs),min(po4_sq/(po4_sq+din_min_egs*din_min_egs*rfr_p*rfr_p),lim_light_egs))
+                lr_assim_egs    = r_egs_assim*theta(t_o2-2*t_h2s)*min(din_sq/(din_sq+din_min_egs*din_min_egs),min(po4_sq/(po4_sq+din_min_egs*din_min_egs*rfr_p*rfr_p),lim_light_egs))*(1/(1+exp(sali_min_egs*sali_min_egs-cgt_sali*cgt_sali)))
 
                 ! additional eelgrass mortality under hight bootom stress :
                 egs_mort_det_tau = r_egs_mort_enh_tau * theta(cgt_current_wave_stress - egs_tau_max)
+
+                ! additional eelgrass roots mortality under hight bootom stress :
+                egr_mort_det_tau = r_egr_mort_enh_tau * theta(cgt_current_wave_stress - egr_tau_max)
 
 #ifdef hor_spread
                 ergom%lat_spread_tau(i,j) = lat_spread_egr
@@ -7774,6 +7805,9 @@ write (stdout(),*) 'TRACERS (pseudo-3d (fish)):'
                    endif
                    if (ergom%id_egs_mort_det_tau .gt. 0) then
                       ergom%egs_mort_det_tau(i,j) = egs_mort_det_tau
+                   endif
+                   if (ergom%id_egr_mort_det_tau .gt. 0) then
+                      ergom%egr_mort_det_tau(i,j) = egr_mort_det_tau
                    endif
                 endif
                 if (k == 1) then
@@ -8453,11 +8487,11 @@ write (stdout(),*) 'TRACERS (pseudo-3d (fish)):'
                    p_sed_pocp_denit = max(p_sed_pocp_denit,0.0)
 
                    ! recycling of sedimentary pocn to dic and NH4 using sulfate (sulfate reduction) :
-                   p_sed_pocn_sulf = (lr_sed_rec*pocn_active)*(1.0-lim_t_o2_2)*(1.0-lim_t_no3_3)*lim_t_pocn_14
+                   p_sed_pocn_sulf = (lr_sed_rec*pocn_active)*(1.0-lim_t_o2_2)*(1.0-lim_t_no3_3)*lim_t_sed_pocn_27
                    p_sed_pocn_sulf = max(p_sed_pocn_sulf,0.0)
 
                    ! recycling of sedimentary pocp to dic and PO4 using sulfate (sulfate reduction) :
-                   p_sed_pocp_sulf = (lr_sed_rec*pocp_active)*(1.0-lim_t_o2_2)*(1.0-lim_t_no3_3)*lim_t_pocp_13
+                   p_sed_pocp_sulf = (lr_sed_rec*pocp_active)*(1.0-lim_t_o2_2)*(1.0-lim_t_no3_3)*lim_t_sed_pocp_28
                    p_sed_pocp_sulf = max(p_sed_pocp_sulf,0.0)
 
                    ! calcium carbonate dissolution from till sediments :
@@ -8489,7 +8523,7 @@ write (stdout(),*) 'TRACERS (pseudo-3d (fish)):'
                    p_egs_resp_nh4  = max(p_egs_resp_nh4 ,0.0)
 
                    ! mortality of eelgrass roots :
-                   p_egr_mort_det  = (t_eelgrass_root*r_egr_mort*(theta(1e-6 - (t_o2-2*t_h2s)) + ( 1 - 1/(1 + exp((sed_tot - sed_max_4_egr)*st_egs/sed_max_4_egr))) ))*lim_t_eelgrass_root_34
+                   p_egr_mort_det  = (t_eelgrass_root*r_egr_mort*(theta(1e-6 - (t_o2-2*t_h2s)) + ( 1 - 1/(1 + exp((sed_tot - sed_max_4_egr)*st_egs/sed_max_4_egr)))+ egr_mort_det_tau))*lim_t_eelgrass_root_34
                    p_egr_mort_det  = max(p_egr_mort_det ,0.0)
 
                    ! respiration of eelgrass roots to ammonium using oxygen :
@@ -9560,14 +9594,12 @@ write (stdout(),*) 'TRACERS (pseudo-3d (fish)):'
                          + p_sed_ero_pocp               & ! sedimentary pocp erosion
                          + p_sed_biores_pocp            & ! bio resuspension of sedimentary pocp
                          - p_pocp_sedi_sed              & ! pocp sedimentation
-                         - p_sed_pocp_sulf              & ! recycling of sedimentary pocp to dic and PO4 using sulfate (sulfate reduction)
                       )
 
                       change_btf_t_pocn          = change_btf_t_pocn          + cgt_timestep*(0.0 &
                          + p_sed_ero_pocn               & ! sedimentary pocn erosion
                          + p_sed_biores_pocn            & ! bio resuspension of sedimentary pocn
                          - p_pocn_sedi_sed              & ! pocn sedimentation
-                         - p_sed_pocn_sulf              & ! recycling of sedimentary pocn to dic and NH4 using sulfate (sulfate reduction)
                       )
 
                       change_btf_t_ipw           = change_btf_t_ipw           + cgt_timestep*(0.0 &
@@ -9715,14 +9747,12 @@ write (stdout(),*) 'TRACERS (pseudo-3d (fish)):'
                          + p_sed_ero_pocp/1             / rho_dzt_bot(i,j) & ! sedimentary pocp erosion
                          + p_sed_biores_pocp/1          / rho_dzt_bot(i,j) & ! bio resuspension of sedimentary pocp
                          - p_pocp_sedi_sed/1            / rho_dzt_bot(i,j) & ! pocp sedimentation
-                         - p_sed_pocp_sulf/1            / rho_dzt_bot(i,j) & ! recycling of sedimentary pocp to dic and PO4 using sulfate (sulfate reduction)
                       )
 
                       change_of_t_pocn          = change_of_t_pocn          + cgt_timestep*(0.0 &
                          + p_sed_ero_pocn/1             / rho_dzt_bot(i,j) & ! sedimentary pocn erosion
                          + p_sed_biores_pocn/1          / rho_dzt_bot(i,j) & ! bio resuspension of sedimentary pocn
                          - p_pocn_sedi_sed/1            / rho_dzt_bot(i,j) & ! pocn sedimentation
-                         - p_sed_pocn_sulf/1            / rho_dzt_bot(i,j) & ! recycling of sedimentary pocn to dic and NH4 using sulfate (sulfate reduction)
                       )
 
                       change_of_t_ipw           = change_of_t_ipw           + cgt_timestep*(0.0 &
@@ -9777,6 +9807,7 @@ write (stdout(),*) 'TRACERS (pseudo-3d (fish)):'
                         - p_pocn_burial                & ! burial of pocn deeper than max_sed
                         - p_sed_pocn_resp              & ! recycling of sedimentary pocn to dic and NH4 using oxygen (respiration)
                         - p_sed_pocn_denit             & ! recycling of sedimentary pocn to dic and NH4 using nitrate (denitrification)
+                        - p_sed_pocn_sulf              & ! recycling of sedimentary pocn to dic and NH4 using sulfate (sulfate reduction)
                    )
 
                      change_of_t_sed_pocp      = change_of_t_sed_pocp      + cgt_timestep*(0.0 &
@@ -9786,6 +9817,7 @@ write (stdout(),*) 'TRACERS (pseudo-3d (fish)):'
                         - p_pocp_burial                & ! burial of pocp deeper than max_sed
                         - p_sed_pocp_resp              & ! recycling of sedimentary pocp to dic and PO4 using oxygen (respiration)
                         - p_sed_pocp_denit             & ! recycling of sedimentary pocp to dic and PO4 using nitrate (denitrification)
+                        - p_sed_pocp_sulf              & ! recycling of sedimentary pocp to dic and PO4 using sulfate (sulfate reduction)
                    )
 
                      change_of_t_eelgrass_root = change_of_t_eelgrass_root + cgt_timestep*(0.0 &
@@ -12247,6 +12279,10 @@ call pass_var(ergom%t_eelgrass_root_tau,D,halo=1)
           used = g_send_data(ergom%id_egs_mort_det_tau, ergom%egs_mort_det_tau,                 &
           model_time, rmask = grid_tmask(:,:,1), &
           is_in=isc, js_in=jsc, ie_in=iec, je_in=jec)
+       if (ergom%id_egr_mort_det_tau .gt. 0) &
+          used = g_send_data(ergom%id_egr_mort_det_tau, ergom%egr_mort_det_tau,                 &
+          model_time, rmask = grid_tmask(:,:,1), &
+          is_in=isc, js_in=jsc, ie_in=iec, je_in=jec)
 
 
        if (ergom%id_p_no3_assim_lpp .gt. 0) &
@@ -12925,12 +12961,13 @@ call pass_var(ergom%t_eelgrass_root_tau,D,halo=1)
     real                            :: alk_btf_sw_BS     ! Alk bottom flux in Bothnian Sea
     real                            :: alk_btf_sw_BB     ! Alk bottom flux in Bothnian Bay
     real                            :: lr_egs_max        ! dynamic shoot biomass maximum as funktion of root
-    real                            :: lim_egs_growth    ! limitation of eelgrass shoots growth due to carring capacity and root density
-    real                            :: lim_egr_growth    ! limitation of eelgrass root growth due to carring capacity
+    real                            :: lim_egs_growth    ! limitation of eelgrass shoots growth due to carrying capacity and root density
+    real                            :: lim_egr_growth    ! limitation of eelgrass root growth due to carrying capacity
     real                            :: lat_spread_egr    ! lateral growth of eelgrass roots
     real                            :: lim_light_egs     ! light limitation factor for eelgrass growth [1]
     real                            :: lr_assim_egs      ! growth rate of eelgrass shoots, limited by DIN, DIP, light and oxygen [1/day]
     real                            :: egs_mort_det_tau   ! additional eelgrass mortality under hight bootom stress
+    real                            :: egr_mort_det_tau   ! additional eelgrass roots mortality under hight bootom stress
 
     real                            :: p_no3_assim_lpp   ! assimilation of nitrate by large-cell phytoplankton
     real                            :: p_nh4_assim_lpp   ! assimilation of ammonium by large-cell phytoplankton
@@ -13619,12 +13656,12 @@ call pass_var(ergom%t_eelgrass_root_tau,D,halo=1)
              alk_btf_sw_BB   = (1 - alk_btf_l2) * (alk_btf_db1 + alk_btf_DBBfac*alk_btf_db2)
 
              ! dynamic shoot biomass maximum as funktion of root :
-             lr_egs_max      = shoot_max * min(t_eelgrass_root/root_max, 1.0)
+             lr_egs_max      = shoot_max * max(min(t_eelgrass_root/root_max, 1.0),epsilon)
 
-             ! limitation of eelgrass shoots growth due to carring capacity and root density :
+             ! limitation of eelgrass shoots growth due to carrying capacity and root density :
              lim_egs_growth  = 1/(1 + exp((t_eelgrass_shoot - lr_egs_max)*st_egs/lr_egs_max))
 
-             ! limitation of eelgrass root growth due to carring capacity :
+             ! limitation of eelgrass root growth due to carrying capacity :
              lim_egr_growth  = 1/(1 + exp((t_eelgrass_root - root_max)*st_egs/root_max))
 
              ! lateral growth of eelgrass roots :
@@ -13635,10 +13672,13 @@ call pass_var(ergom%t_eelgrass_root_tau,D,halo=1)
              lim_light_egs   = cgt_light/temp1*exp(1-cgt_light/temp1)
 
              ! growth rate of eelgrass shoots, limited by DIN, DIP, light and oxygen [1/day] :
-             lr_assim_egs    = r_egs_assim*theta(t_o2-2*t_h2s)*min(din_sq/(din_sq+din_min_egs*din_min_egs),min(po4_sq/(po4_sq+din_min_egs*din_min_egs*rfr_p*rfr_p),lim_light_egs))
+             lr_assim_egs    = r_egs_assim*theta(t_o2-2*t_h2s)*min(din_sq/(din_sq+din_min_egs*din_min_egs),min(po4_sq/(po4_sq+din_min_egs*din_min_egs*rfr_p*rfr_p),lim_light_egs))*(1/(1+exp(sali_min_egs*sali_min_egs-cgt_sali*cgt_sali)))
 
              ! additional eelgrass mortality under hight bootom stress :
              egs_mort_det_tau = r_egs_mort_enh_tau * theta(cgt_current_wave_stress - egs_tau_max)
+
+             ! additional eelgrass roots mortality under hight bootom stress :
+             egr_mort_det_tau = r_egr_mort_enh_tau * theta(cgt_current_wave_stress - egr_tau_max)
 
 
              !------------------------------------
@@ -13893,6 +13933,9 @@ call pass_var(ergom%t_eelgrass_root_tau,D,halo=1)
                 endif
                 if (ergom%id_sed_egs_mort_det_tau .gt. 0) then
                    ergom%sed_egs_mort_det_tau(i,j,k) = egs_mort_det_tau
+                endif
+                if (ergom%id_sed_egr_mort_det_tau .gt. 0) then
+                   ergom%sed_egr_mort_det_tau(i,j,k) = egr_mort_det_tau
                 endif
              endif
 
@@ -14448,11 +14491,11 @@ call pass_var(ergom%t_eelgrass_root_tau,D,halo=1)
                 p_sed_pocp_denit = max(p_sed_pocp_denit,0.0)
 
                 ! recycling of sedimentary pocn to dic and NH4 using sulfate (sulfate reduction) :
-                p_sed_pocn_sulf = (lr_sed_rec*pocn_active)*(1.0-lim_t_o2_2)*(1.0-lim_t_no3_3)*lim_t_pocn_14
+                p_sed_pocn_sulf = (lr_sed_rec*pocn_active)*(1.0-lim_t_o2_2)*(1.0-lim_t_no3_3)*lim_t_sed_pocn_27
                 p_sed_pocn_sulf = max(p_sed_pocn_sulf,0.0)
 
                 ! recycling of sedimentary pocp to dic and PO4 using sulfate (sulfate reduction) :
-                p_sed_pocp_sulf = (lr_sed_rec*pocp_active)*(1.0-lim_t_o2_2)*(1.0-lim_t_no3_3)*lim_t_pocp_13
+                p_sed_pocp_sulf = (lr_sed_rec*pocp_active)*(1.0-lim_t_o2_2)*(1.0-lim_t_no3_3)*lim_t_sed_pocp_28
                 p_sed_pocp_sulf = max(p_sed_pocp_sulf,0.0)
 
                 ! calcium carbonate dissolution from till sediments :
@@ -14484,7 +14527,7 @@ call pass_var(ergom%t_eelgrass_root_tau,D,halo=1)
                 p_egs_resp_nh4  = max(p_egs_resp_nh4 ,0.0)
 
                 ! mortality of eelgrass roots :
-                p_egr_mort_det  = (t_eelgrass_root*r_egr_mort*(theta(1e-6 - (t_o2-2*t_h2s)) + ( 1 - 1/(1 + exp((sed_tot - sed_max_4_egr)*st_egs/sed_max_4_egr))) ))*lim_t_eelgrass_root_34
+                p_egr_mort_det  = (t_eelgrass_root*r_egr_mort*(theta(1e-6 - (t_o2-2*t_h2s)) + ( 1 - 1/(1 + exp((sed_tot - sed_max_4_egr)*st_egs/sed_max_4_egr)))+ egr_mort_det_tau))*lim_t_eelgrass_root_34
                 p_egr_mort_det  = max(p_egr_mort_det ,0.0)
 
                 ! respiration of eelgrass roots to ammonium using oxygen :
@@ -15086,14 +15129,12 @@ call pass_var(ergom%t_eelgrass_root_tau,D,halo=1)
                    + p_sed_ero_pocp/1             & ! sedimentary pocp erosion
                    + p_sed_biores_pocp/1          & ! bio resuspension of sedimentary pocp
                    - p_pocp_sedi_sed/1            & ! pocp sedimentation
-                   - p_sed_pocp_sulf/1            & ! recycling of sedimentary pocp to dic and PO4 using sulfate (sulfate reduction)
                 )
 
                 change_of_t_pocn          = change_of_t_pocn          + cgt_timestep*(0.0 &
                    + p_sed_ero_pocn/1             & ! sedimentary pocn erosion
                    + p_sed_biores_pocn/1          & ! bio resuspension of sedimentary pocn
                    - p_pocn_sedi_sed/1            & ! pocn sedimentation
-                   - p_sed_pocn_sulf/1            & ! recycling of sedimentary pocn to dic and NH4 using sulfate (sulfate reduction)
                 )
 
                 change_of_t_ipw           = change_of_t_ipw           + cgt_timestep*(0.0 &
@@ -15147,6 +15188,7 @@ call pass_var(ergom%t_eelgrass_root_tau,D,halo=1)
                    - p_pocn_burial                & ! burial of pocn deeper than max_sed
                    - p_sed_pocn_resp              & ! recycling of sedimentary pocn to dic and NH4 using oxygen (respiration)
                    - p_sed_pocn_denit             & ! recycling of sedimentary pocn to dic and NH4 using nitrate (denitrification)
+                   - p_sed_pocn_sulf              & ! recycling of sedimentary pocn to dic and NH4 using sulfate (sulfate reduction)
                 )
 
                 change_of_t_sed_pocp      = change_of_t_sed_pocp      + cgt_timestep*(0.0 &
@@ -15156,6 +15198,7 @@ call pass_var(ergom%t_eelgrass_root_tau,D,halo=1)
                    - p_pocp_burial                & ! burial of pocp deeper than max_sed
                    - p_sed_pocp_resp              & ! recycling of sedimentary pocp to dic and PO4 using oxygen (respiration)
                    - p_sed_pocp_denit             & ! recycling of sedimentary pocp to dic and PO4 using nitrate (denitrification)
+                   - p_sed_pocp_sulf              & ! recycling of sedimentary pocp to dic and PO4 using sulfate (sulfate reduction)
                 )
 
                 change_of_t_eelgrass_root = change_of_t_eelgrass_root + cgt_timestep*(0.0 &
@@ -16590,6 +16633,10 @@ call pass_var(ergom%t_eelgrass_root_tau,D,halo=1)
           used = g_send_data(ergom%id_sed_egs_mort_det_tau, ergom%sed_egs_mort_det_tau,                 &
           model_time, &
           is_in=isc, js_in=jsc, ie_in=iec, je_in=jec)
+       if (ergom%id_sed_egr_mort_det_tau .gt. 0) &
+          used = g_send_data(ergom%id_sed_egr_mort_det_tau, ergom%sed_egr_mort_det_tau,                 &
+          model_time, &
+          is_in=isc, js_in=jsc, ie_in=iec, je_in=jec)
 
 
        if (ergom%id_sed_p_sed_burial    .gt. 0) &
@@ -16635,11 +16682,7 @@ call pass_var(ergom%t_eelgrass_root_tau,D,halo=1)
   ! </SUBROUTINE>
   subroutine generic_ERGOM_update_from_source(tracer_list,Temp,Salt, rho_dzt,dzt,xt,yt,hblt_depth,&
        ilb,jlb,tau,dt,grid_dat,model_time,nbands,max_wavelength_band, sw_pen_band,opacity_band, &
-#ifdef hor_spread
        current_wave_stress, diff_cbt,D)
-#else
-       current_wave_stress, diff_cbt)
-#endif
 
     type(g_tracer_type),            pointer    :: tracer_list
     real, dimension(ilb:,jlb:,:),   intent(in) :: Temp,Salt,rho_dzt,dzt
@@ -16656,9 +16699,7 @@ call pass_var(ergom%t_eelgrass_root_tau,D,halo=1)
     real, dimension(:,ilb:,jlb:,:), intent(in) :: opacity_band
     real, dimension(ilb:,jlb:),    optional,intent(in) :: current_wave_stress
     real, dimension(ilb:,jlb:,:  ),optional,intent(in) :: diff_cbt
-#ifdef hor_spread
     type(MOM_domain_type),         optional,intent(inout) :: D
-#endif
 
     integer :: isc,iec, jsc,jec,isd,ied,jsd,jed,nk,ntau, i, j, k , kblt, n, m, nband
     real, dimension(:,:,:) ,pointer :: grid_tmask
@@ -17548,6 +17589,7 @@ call pass_var(ergom%t_eelgrass_root_tau,D,halo=1)
     if (ergom%id_lim_light_egs   .gt. 0) deallocate(ergom%lim_light_egs  )
     if (ergom%id_lr_assim_egs    .gt. 0) deallocate(ergom%lr_assim_egs   )
     if (ergom%id_egs_mort_det_tau .gt. 0) deallocate(ergom%egs_mort_det_tau)
+    if (ergom%id_egr_mort_det_tau .gt. 0) deallocate(ergom%egr_mort_det_tau)
     deallocate(ergom%btm_t_n2           )
     deallocate(ergom%btm_t_o2           )
     deallocate(ergom%btm_t_dic          )
