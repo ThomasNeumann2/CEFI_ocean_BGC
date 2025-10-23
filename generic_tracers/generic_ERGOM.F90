@@ -60,7 +60,7 @@
 module generic_ERGOM
 
   use coupler_types_mod,   only: coupler_2d_bc_type
-  use field_manager_mod,   only: fm_string_len, fm_path_name_len
+  use field_manager_mod,   only: fm_string_len
 
   use mpp_mod,             only: mpp_clock_id, mpp_clock_begin, mpp_clock_end, CLOCK_ROUTINE
   use mpp_mod,             only: CLOCK_COMPONENT, CLOCK_SUBCOMPONENT, CLOCK_MODULE
@@ -70,7 +70,11 @@ module generic_ERGOM
   use fm_util_mod,         only: fm_util_start_namelist, fm_util_end_namelist
   use data_override_mod, only: data_override
   use fms_mod,           only: write_version_number, FATAL, WARNING, stdout, stdlog,mpp_pe,mpp_root_pe
+#ifdef USE_FMS2_IO
+  use MOM_io,            only: open_namelist_file, check_nml_error, close_file
+#else
   use fms_mod,           only: open_namelist_file, check_nml_error, close_file
+#endif
 
 !  use diag_manager_mod,    only: register_diag_field, send_data
 
